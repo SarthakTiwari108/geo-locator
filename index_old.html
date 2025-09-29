@@ -144,6 +144,7 @@
         document.getElementById("tab-coords").classList.toggle("active",tab==="coords");
         document.getElementById("tab-address").classList.toggle("active",tab==="address");
     }
+
     document.getElementById("form").addEventListener("submit",async function(e){
         e.preventDefault();
         let resultBox=document.getElementById("result");
@@ -158,14 +159,25 @@
             data={ mode: "address",latitude: lat,longitude: lon};
         }
         try {
-            let response=await fetch("http://127.0.0.1:5000/api",{
+            let response=await fetch("https://geo-locator-ffp6.onrender.com/api",{
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
             });
             if (!response.ok) throw new Error("Server error");
             let result=await response.json();
-            resultBox.innerHTML="<b>Result:</b> "+result.message;
+
+            // Handle different response types
+            if (result.latitude && result.longitude) {
+                resultBox.innerHTML = `<b>Coordinates:</b> ${result.latitude}, ${result.longitude}`;
+            } else if (result.address) {
+                resultBox.innerHTML = `<b>Address:</b> ${result.address}`;
+            } else if (result.message) {
+                resultBox.innerHTML = `<b>Result:</b> ${result.message}`;
+            } else {
+                resultBox.innerHTML = "No result found.";
+            }
+
         } catch (err){
             resultBox.innerHTML="Error: "+err.message;
         }

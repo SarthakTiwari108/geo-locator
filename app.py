@@ -1,49 +1,38 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from geopy.geocoders import Nominatim
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
-CORS(app)
+app = Flask(__name__)
+CORS(app)  # allow all origins
 
-geolocator = Nominatim(user_agent="geo_locator_app")
-
-@app.route("/")
-def home():
-    return render_template("index.html")
+geolocator = Nominatim(user_agent="geo_app")
 
 @app.route("/api", methods=["POST"])
-def api():
+def geo_api():
     data = request.get_json()
-    try:
-        if data["mode"] == "coords":
-            address = data.get("address")
-            location = geolocator.geocode(address)
-            if location:
-                return jsonify({
-                    "status": "success",
-                    "latitude": location.latitude,
-                    "longitude": location.longitude
-                })
-            else:
-                return jsonify({"status": "error", "message": "Address not found"})
 
-        elif data["mode"] == "address":
-            lat = data.get("latitude")
-            lon = data.get("longitude")
-            location = geolocator.reverse(f"{lat},{lon}")
-            if location:
-                return jsonify({
-                    "status": "success",
-                    "address": location.address
-                })
-            else:
-                return jsonify({"status": "error", "message": "Coordinates not found"})
+    if not data or "query" not in data:
+        return jsonify({"message": "No query provided"}), 400
 
+    query = data["query"]
+
+    # Check if input is coordinates (lat,lon) or address
+    if "," in query:
+        try:
+            lat, lon = map(float, query.split(","))
+            location = geolocator.reverse((lat, lon), language="en")
+            if location:
+                return jsonify({"address": location.address})
+            else:
+                return jsonify({"message": "Address not found"}), 404
+        except:
+            return jsonify({"message": "Invalid coordinates"}), 400
+    else:
+        location = geolocator.geocode(query, language="en")
+        if location:
+            return jsonify({"latitude": location.latitude, "longitude": location.longitude})
         else:
-            return jsonify({"status": "error", "message": "Invalid mode"})
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+            return jsonify({"message": "Location not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
